@@ -52,6 +52,7 @@ import { DRAG_THRESHOLD, KEYBOARD_STEP, useFabDrag } from './fab-drag.ts'
 import {
   UnreadStatusContext,
   useSessionStatusMap,
+  usePublishPendingApprovals,
   type UseSessionStatus,
 } from './completion-unread.ts'
 
@@ -217,6 +218,7 @@ export function BoardNavEntry({
   // Called unconditionally, even when the shell supplies no hook: a conditional hook
   // would change the call order between renders.
   const statusMap = useSessionStatusMap(useSessionStatus)
+  usePublishPendingApprovals(store, statusMap)
   const translate = createTranslate(state.locale)
   const iconRef = useRef<HTMLSpanElement | null>(null)
   const warned = useRef(false)
@@ -423,6 +425,7 @@ export function BoardOverlay({
   const open = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   const statusMap = useSessionStatusMap(useSessionStatus)
+  usePublishPendingApprovals(store, statusMap)
   const translate = createTranslate(state.locale)
   const panelRef = useRef<HTMLDivElement | null>(null)
   const fabRef = useRef<HTMLButtonElement | null>(null)

@@ -98,6 +98,11 @@ export interface BoardStore {
   /** Change the panel filter; only the workspace scope is persisted. */
   setFilter(patch: Partial<BoardFilterState>): void
   /**
+   * Replace the set of sessions parked on a tool approval. The host publishes
+   * that state only through its client-side status map, so the view feeds it in.
+   */
+  setPendingApprovals(ids: ReadonlySet<string>): void
+  /**
    * Attach the Harness workspace service (it may mount after this plugin).
    * Returns the detach function; `undefined` detaches without a replacement.
    */
@@ -320,6 +325,8 @@ export function createBoardStore(options: BoardStoreOptions): BoardStore {
   let workspaces: WorkspacesFace | undefined = options.workspaces
   let workspaceOff: (() => void) | undefined
   let disposed = false
+  /** Sessions the host reports as waiting on a tool approval. */
+  let pendingApprovals: ReadonlySet<string> = new Set()
   /**
    * First time each session was seen waiting on the user, for snapshots that do
    * not carry the ask time. A session leaving `decision` drops its key at once
@@ -356,7 +363,12 @@ export function createBoardStore(options: BoardStoreOptions): BoardStore {
     const list = options.sessions?.list?.getSnapshot()
     const workspaceSnapshot = workspaces?.list.getSnapshot()
     const at = now()
-    const signals = withDecisionClock(collectSessionSignals(list, { workspaces: workspaceSnapshot }), at)
+    // An approval is a decision only the user can make, exactly like a parked
+    // question, so it joins the same board and the same wait clock.
+    const collected = collectSessionSignals(list, { workspaces: workspaceSnapshot }).map(signal =>
+      pendingApprovals.has(signal.id) && !signal.awaitingDecision ? { ...signal, awaitingDecision: true } : signal,
+    )
+    const signals = withDecisionClock(collected, at)
     const activeWorkspaceId = resolveActiveWorkspaceId(list, workspaceSnapshot)
     const board = buildBoard(signals, config, at)
     const panelBoard = isFilterActive(filter, activeWorkspaceId)
@@ -508,6 +520,12 @@ export function createBoardStore(options: BoardStoreOptions): BoardStore {
           // Keep the in-memory choice.
         }
       }
+      recompute()
+    },
+    setPendingApprovals(ids) {
+      if (disposed) return
+      if (ids.size === pendingApprovals.size && [...ids].every(id => pendingApprovals.has(id))) return
+      pendingApprovals = new Set(ids)
       recompute()
     },
     attachWorkspaces(face) {

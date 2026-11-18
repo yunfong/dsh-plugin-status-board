@@ -40,6 +40,7 @@ function makeStore(signals: readonly SessionSignal[]): BoardStore {
     subscribe: () => () => {},
     getSnapshot: () => state,
     toggle: () => {},
+    setPendingApprovals: () => {},
     dispose: () => {},
   } as unknown as BoardStore
 }

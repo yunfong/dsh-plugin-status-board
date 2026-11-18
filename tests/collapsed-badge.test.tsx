@@ -51,6 +51,7 @@ function fakeStore(signals: readonly SessionSignal[], config: ResolvedStatusBoar
     toggle() {},
     setFilter() {},
     attachWorkspaces: () => () => {},
+    setPendingApprovals() {},
     dispose() {},
   } as unknown as BoardStore
   return {

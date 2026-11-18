@@ -18,7 +18,7 @@
 
 import { createElement, useSyncExternalStore, type ReactElement } from 'react'
 import { createTranslate } from '../shared/i18n.ts'
-import { useSessionStatusMap, type UseSessionStatus } from './completion-unread.ts'
+import { usePublishPendingApprovals, useSessionStatusMap, type UseSessionStatus } from './completion-unread.ts'
 import { summarizeBoard } from './counts.ts'
 import type { BoardStore } from './store.ts'
 import { BADGE_CSS } from './styles.ts'
@@ -47,6 +47,7 @@ export function CollapsedBadge({
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   // Called on every render even without the hook, to keep the call order fixed.
   const statuses = useSessionStatusMap(useSessionStatus)
+  usePublishPendingApprovals(store, statuses)
   const summary = summarizeBoard(state.board, statuses)
   if (!state.config.showCollapsedBadge) return null
 

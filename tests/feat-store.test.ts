@@ -282,3 +282,26 @@ describe('published configuration', () => {
     store.dispose()
   })
 })
+
+describe('pending tool approval', () => {
+  it('puts a session parked on an approval into the decision board and starts its clock', () => {
+    const store = createBoardStore({ ...base, sessions: mutable([row('a', { running: true }), row('b')]) })
+    expect(store.getSnapshot().board.counts.decision).toBe(0)
+    store.setPendingApprovals(new Set(['a']))
+    const { board } = store.getSnapshot()
+    expect(board.counts.decision).toBe(1)
+    expect(board.buckets[0]?.entries[0]).toMatchObject({ id: 'a', waitingMs: expect.any(Number) })
+    // No question card: the row only opens the session.
+    expect(board.buckets[0]?.entries[0]?.questions).toBeUndefined()
+    store.setPendingApprovals(new Set())
+    expect(store.getSnapshot().board.counts.decision).toBe(0)
+    store.dispose()
+  })
+
+  it('ignores an approval for a session the board does not list', () => {
+    const store = createBoardStore({ ...base, sessions: mutable([row('a')]) })
+    store.setPendingApprovals(new Set(['ghost']))
+    expect(store.getSnapshot().board.counts.decision).toBe(0)
+    store.dispose()
+  })
+})

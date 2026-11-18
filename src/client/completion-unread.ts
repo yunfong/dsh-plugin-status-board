@@ -20,11 +20,18 @@
  * @module dsh-plugin-status-board/client/completion-unread
  */
 
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 
 /** One session's status as the platform publishes it (only the field we read). */
 export interface SessionStatusLike {
   readonly completionUnread?: boolean | undefined
+  /**
+   * The domain request currently waiting on this user. `kind` is `'approval'`
+   * for a tool permission prompt, `'question'` / `'plan-review'` for the
+   * user-questions tool. Only `approval` is read here: the other two already
+   * reach the board through the `userQuestions` projection.
+   */
+  readonly pendingInteraction?: { readonly kind?: string | undefined } | undefined
 }
 
 /** The whole status map: session id → status. */
@@ -71,6 +78,36 @@ export const UnreadStatusContext = createContext<SessionStatusMap>(EMPTY)
 /** Read the status map published by the nearest provider. */
 export function useUnreadStatuses(): SessionStatusMap {
   return useContext(UnreadStatusContext)
+}
+
+/**
+ * Ids of the sessions parked on a tool approval.
+ *
+ * An approval is not published in the session-list projection, so this status
+ * map is the only place the plugin can see it.
+ */
+export function pendingApprovalIds(statuses: SessionStatusMap): ReadonlySet<string> {
+  const ids = new Set<string>()
+  for (const [id, status] of statuses) {
+    if (status.pendingInteraction?.kind === 'approval') ids.add(id)
+  }
+  return ids
+}
+
+/**
+ * Publish the pending approvals into the board store whenever they change.
+ *
+ * The status map reaches the plugin only as a slot prop (a React hook), never
+ * through `ctx`, so a mounted slot component has to carry it into the store.
+ * The store ignores a set equal to the one it already holds.
+ */
+export function usePublishPendingApprovals(
+  store: { setPendingApprovals(ids: ReadonlySet<string>): void },
+  statuses: SessionStatusMap,
+): void {
+  useEffect(() => {
+    store.setPendingApprovals(pendingApprovalIds(statuses))
+  }, [store, statuses])
 }
 
 /** Whether one session is finished-but-unopened. */

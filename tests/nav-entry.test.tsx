@@ -49,6 +49,7 @@ function makeStore(signals: readonly SessionSignal[]): BoardStore & { toggled: s
     toggle: (id: string) => {
       toggled.push(id)
     },
+    setPendingApprovals: () => {},
     dispose: () => {},
   } as unknown as BoardStore & { toggled: string[] }
 }

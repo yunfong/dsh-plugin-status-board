@@ -4,6 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] — 2026-11-18
+
+### Changed
+
+- **A session waiting on a tool approval now counts as a decision.** It lands in the
+  decision board with a wait clock, in the ring, the sidebar tree and the collapsed badge,
+  like a parked question. The host does not publish approvals in the session-list
+  projection, so the plugin reads `pendingInteraction.kind === 'approval'` from the
+  `useSessionStatus` map. The row has no answer card: it opens the session, where the
+  approval prompt is.
+
 ## [0.8.0] — 2026-11-18
 
 Implements FEAT-01 – FEAT-06 of the extension spec (v0.6 – v0.8) in one release.

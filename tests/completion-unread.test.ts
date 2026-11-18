@@ -9,6 +9,7 @@ import { describe, expect, it } from 'vitest'
 import {
   countCompletionUnread,
   isCompletionUnread,
+  pendingApprovalIds,
   type SessionStatusLike,
   type SessionStatusMap,
 } from '../src/client/completion-unread.ts'
@@ -71,5 +72,17 @@ describe('countCompletionUnread', () => {
   it('never exceeds the number of entries', () => {
     const entries = [{ id: 'a' }, { id: 'b' }, { id: 'c' }]
     expect(countCompletionUnread(map, entries)).toBeLessThanOrEqual(entries.length)
+  })
+})
+
+describe('pendingApprovalIds', () => {
+  it('keeps only sessions whose pending interaction is an approval', () => {
+    const map = new Map([
+      ['a', { pendingInteraction: { kind: 'approval' } }],
+      ['b', { pendingInteraction: { kind: 'question' } }],
+      ['c', { pendingInteraction: { kind: 'plan-review' } }],
+      ['d', { completionUnread: true }],
+    ])
+    expect([...pendingApprovalIds(map)]).toEqual(['a'])
   })
 })
