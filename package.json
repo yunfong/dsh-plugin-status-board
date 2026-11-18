@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-status-board",
-  "version": "0.5.0",
+  "version": "0.8.0",
   "description": "Status-based session board plugin for DeepSeek Harness",
   "license": "MIT",
   "author": "CCLUCKY",
@@ -13,12 +13,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ccclucky/dsh-plugin-status-board.git"
+    "url": "git+https://github.com/yunfong/dsh-plugin-status-board.git"
   },
   "bugs": {
-    "url": "https://github.com/ccclucky/dsh-plugin-status-board/issues"
+    "url": "https://github.com/yunfong/dsh-plugin-status-board/issues"
   },
-  "homepage": "https://github.com/ccclucky/dsh-plugin-status-board#readme",
+  "homepage": "https://github.com/yunfong/dsh-plugin-status-board#readme",
   "keywords": [
     "dsh",
     "dsh-plugin",

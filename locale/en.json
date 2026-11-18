@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Session Status Board",
-    "description": "Groups sessions into three collapsible boards — Needs my decision, Running, and Recent records — so every session's real state fits on one screen."
+    "description": "Groups sessions into collapsible boards — Needs my decision, Running, Completed unread, Automated and Recent records — so every session's real state fits on one screen."
   },
   "panel": {
     "title": "Session Status Board",
@@ -29,7 +29,11 @@
     "unreadUnit": "completed unread",
     "unopened": "unopened",
     "recentEmpty": "No recent activity",
-    "recentHintDays": "Active in the last {days} days"
+    "recentHintDays": "Active in the last {days} days",
+    "automated": "Automated",
+    "automatedHint": "Scheduled and automated runs; a question from one still lands in \"Needs my decision\"",
+    "automatedUnit": "automated",
+    "automatedEmpty": "No automated sessions"
   },
   "state": {
     "loading": "Reading sessions…",
@@ -83,6 +87,58 @@
     "openNotice": "This question is still waiting in the session. Open it to answer.",
     "openSession": "Open session",
     "unavailable": "Answering is unavailable here. Open the session to answer.",
-    "error": "Submit failed: {message}"
+    "error": "Submit failed: {message}",
+    "approve": "Approve",
+    "reject": "Reject with note",
+    "rejectNote": "Reason for rejecting",
+    "selectOne": "Pick an option, or write your own answer",
+    "selectAtLeastOne": "Pick at least one option",
+    "other": "Other…",
+    "expand": "Show more",
+    "collapse": "Show less",
+    "openFull": "Open the session to answer in full",
+    "complexNotice": "This question has several parts or a long plan. Answer it in the session.",
+    "retryInSession": "Retry in the session",
+    "changed": "The question changed; your draft was cleared",
+    "answeredElsewhere": "This question was already answered"
+  },
+  "filter": {
+    "scopeLabel": "Workspace scope",
+    "scopeAll": "All workspaces",
+    "scopeCurrent": "Current workspace",
+    "scopeCurrentUnavailable": "No workspace is active right now",
+    "search": "Search title or workspace",
+    "active": "Filtered",
+    "activeHint": "The list is filtered; the floating button still counts every session",
+    "clear": "Clear filter",
+    "noMatchClear": "No matching sessions. Click to clear the filter.",
+    "hiddenByFilter": "Filter active: {count} sessions in view"
+  },
+  "row": {
+    "waitingWarn": "Waiting {duration}",
+    "waitingCritical": "Blocked {duration}",
+    "subagentsRunning": "{running} subagents running",
+    "subagentsTotal": "{total} subagents",
+    "tokens": "{count} tok",
+    "tool": "Running {tool}",
+    "minutes": "{count}m",
+    "hours": "{count}h",
+    "days": "{count}d"
+  },
+  "badge": {
+    "label": "{count} sessions need attention",
+    "running": "Sessions are running"
+  },
+  "triage": {
+    "archiveAll": "Archive all",
+    "archiveAllLabel": "Archive every session in “{name}”",
+    "confirm": "Archive {count} finished sessions in this board?",
+    "confirmYes": "Confirm",
+    "confirmNo": "Cancel",
+    "busy": "Archiving {done}/{total}…",
+    "failed": "{count} sessions could not be archived: {message}",
+    "done": "Archived {count} sessions",
+    "markAllRead": "Mark all read",
+    "markAllReadLabel": "Mark every completed session in “{name}” as read"
   }
 }

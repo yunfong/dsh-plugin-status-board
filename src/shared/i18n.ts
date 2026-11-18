@@ -37,10 +37,12 @@ export interface LocaleFile {
     readonly decision: string
     readonly executing: string
     readonly unread: string
+    readonly automated: string
     readonly recent: string
     readonly decisionHint: string
     readonly executingHint: string
     readonly unreadHint: string
+    readonly automatedHint: string
     readonly recentHint: string
     /** Day-scale variant used when the configured window is a whole number of days. */
     readonly recentHintDays: string
@@ -51,11 +53,13 @@ export interface LocaleFile {
     readonly decisionUnit: string
     readonly executingUnit: string
     readonly unreadUnit: string
+    readonly automatedUnit: string
     readonly recentUnit: string
     /** Per-board empty copy; more specific than the shared `empty`. */
     readonly decisionEmpty: string
     readonly executingEmpty: string
     readonly unreadEmpty: string
+    readonly automatedEmpty: string
     readonly recentEmpty: string
       /** Suffix appended to a board's count: finished and not yet opened. */
       readonly unopened: string
@@ -72,6 +76,58 @@ export interface LocaleFile {
     readonly openSession: string
     readonly unavailable: string
     readonly error: string
+    readonly approve: string
+    readonly reject: string
+    readonly rejectNote: string
+    readonly selectOne: string
+    readonly selectAtLeastOne: string
+    readonly other: string
+    readonly expand: string
+    readonly collapse: string
+    readonly openFull: string
+    readonly complexNotice: string
+    readonly retryInSession: string
+    readonly changed: string
+    readonly answeredElsewhere: string
+  }
+  readonly filter: {
+    readonly scopeLabel: string
+    readonly scopeAll: string
+    readonly scopeCurrent: string
+    readonly scopeCurrentUnavailable: string
+    readonly search: string
+    readonly active: string
+    readonly activeHint: string
+    readonly clear: string
+    readonly noMatchClear: string
+    readonly hiddenByFilter: string
+  }
+  readonly row: {
+    readonly waitingWarn: string
+    readonly waitingCritical: string
+    readonly subagentsRunning: string
+    readonly subagentsTotal: string
+    readonly tokens: string
+    readonly tool: string
+    readonly minutes: string
+    readonly hours: string
+    readonly days: string
+  }
+  readonly badge: {
+    readonly label: string
+    readonly running: string
+  }
+  readonly triage: {
+    readonly archiveAll: string
+    readonly archiveAllLabel: string
+    readonly markAllRead: string
+    readonly markAllReadLabel: string
+    readonly confirm: string
+    readonly confirmYes: string
+    readonly confirmNo: string
+    readonly busy: string
+    readonly failed: string
+    readonly done: string
   }
   readonly state: {
     readonly loading: string
@@ -123,6 +179,10 @@ export type MessageKey =
   | `action.${keyof LocaleFile['action']}`
   | `tree.${keyof LocaleFile['tree']}`
   | `question.${keyof LocaleFile['question']}`
+  | `filter.${keyof LocaleFile['filter']}`
+  | `row.${keyof LocaleFile['row']}`
+  | `badge.${keyof LocaleFile['badge']}`
+  | `triage.${keyof LocaleFile['triage']}`
   | `detail.${keyof LocaleFile['detail']}`
   | `a11y.${keyof LocaleFile['a11y']}`
   | `panel.${keyof LocaleFile['panel']}`
@@ -253,6 +313,26 @@ export function createTranslate(active: string | undefined): Translate {
     const text = lookup(primary, key) ?? lookup(fallback, key) ?? key
     return formatMessage(text, params)
   }
+}
+
+/** `950` → `950`, `14230` → `14.2k`, `2_400_000` → `2.4M`. */
+export function formatTokenCount(count: number): string {
+  if (!Number.isFinite(count) || count <= 0) return '0'
+  if (count < 1_000) return String(Math.trunc(count))
+  if (count < 1_000_000) return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}k`
+  return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+}
+
+/**
+ * Compact duration for the wait badge: `25m`, `2h`, `3d`.
+ * Rounded down, with a floor of one minute so the badge never reads `0m`.
+ */
+export function formatDuration(ms: number, translate: Translate): string {
+  const minutes = Math.max(1, Math.floor(Math.max(0, ms) / 60_000))
+  if (minutes < 60) return translate('row.minutes', { count: minutes })
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return translate('row.hours', { count: hours })
+  return translate('row.days', { count: Math.floor(hours / 24) })
 }
 
 /**

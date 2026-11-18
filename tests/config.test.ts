@@ -13,7 +13,7 @@ describe('resolveConfig', () => {
   it('keeps every valid override', () => {
     expect(
       resolveConfig({ recentWindowHours: 72, maxRecent: 5, defaultCollapsed: 'none', showEmptyBuckets: false }),
-    ).toEqual({ recentWindowHours: 72, maxRecent: 5, defaultCollapsed: 'none', showEmptyBuckets: false })
+    ).toEqual({ ...CONFIG_DEFAULTS, recentWindowHours: 72, maxRecent: 5, defaultCollapsed: 'none', showEmptyBuckets: false })
   })
 
   it('clamps a window below the minimum', () => {

@@ -6,12 +6,39 @@
  * @module dsh-plugin-status-board/shared/types
  */
 
-/** The three boards, in the fixed order they are rendered. */
-export const BUCKET_IDS = ['decision', 'executing', 'recent'] as const
+/**
+ * Every board, in the fixed order they are rendered.
+ *
+ * `automated` is only materialised when `separateAutomatedSessions` is on; the
+ * classic three boards are always present. (`unread` is a view-level split of
+ * `recent` driven by the host's `useSessionStatus`, not a classifier output, so
+ * it is not part of this list.)
+ */
+export const BUCKET_IDS = ['decision', 'executing', 'automated', 'recent'] as const
 
 /** Identity of one board. */
 export type BucketId = (typeof BUCKET_IDS)[number]
 
+/** Boards every snapshot carries, regardless of configuration. */
+export type CoreBucketId = Exclude<BucketId, 'automated'>
+
+/** How long a decision has been blocking, bucketed by the configured thresholds. */
+export type DecisionSeverity = 'normal' | 'warning' | 'critical'
+
+/** Normalised question families the inline card renders differently. */
+export type QuestionKind = 'continued' | 'single_select' | 'multi_select' | 'confirm' | 'complex_open'
+
+/** Workspace scope of the floating board's filter. */
+export type WorkspaceScope = 'all' | 'current'
+
+/** Filter applied to the floating board only; the global counters ignore it. */
+export interface BoardFilterState {
+  readonly workspaceScope: WorkspaceScope
+  readonly keyword: string
+}
+
+/** Density of the floating board's rows. */
+export type PanelDensity = 'comfortable' | 'compact'
 
 /** One selectable answer to a question. */
 export interface QuestionOption {
@@ -31,6 +58,12 @@ export interface SessionQuestion {
   readonly header?: string | undefined
   readonly options?: readonly QuestionOption[] | undefined
   readonly multiSelect?: boolean | undefined
+  /**
+   * Presentation intent declared by the asker. Only `plan-review` is understood:
+   * `approve` names the option label that approves the plan. Any other intent is
+   * dropped, which leaves the generic option flow.
+   */
+  readonly intent?: { readonly kind: 'plan-review'; readonly approve: string } | undefined
 }
 
 /** State of one answerable question call. */
@@ -47,6 +80,15 @@ export interface ActiveQuestion {
    * returned pending or the original process ended.
    */
   readonly state: QuestionState
+  /**
+   * Card family, classified by the adapter. Optional so a hand-built call (a
+   * test, a future adapter) still renders: the card derives it when absent.
+   */
+  readonly kind?: QuestionKind | undefined
+  /** First paragraph of the review detail, stripped and cut to 500 characters. */
+  readonly summaryPreview?: string | undefined
+  /** Epoch ms the question was asked, when the snapshot carries it. */
+  readonly askedAtMs?: number | undefined
 }
 
 /** One answer in an answer batch. */
@@ -104,6 +146,18 @@ export interface SessionSignal {
    * `undefined`/empty means the Session has no question card to render.
    */
   readonly questions?: readonly ActiveQuestion[] | undefined
+  /** Workspace the Session belongs to, when the host says so. */
+  readonly workspaceId?: string | undefined
+  /** Display name of that Workspace. */
+  readonly workspaceName?: string | undefined
+  /** Started by a schedule, webhook or other automation rather than a person. */
+  readonly isAutomatedOrigin?: boolean | undefined
+  /** Epoch ms the pending question was asked, straight from the snapshot. */
+  readonly askedAtMs?: number | undefined
+  /** Subagent children that belong to this Session (children are never rows). */
+  readonly subagentStats?: SubagentStats | undefined
+  /** One-line context the row can show under its title. */
+  readonly contextPreview?: ContextPreview | undefined
   /**
    * Epoch milliseconds of the Session's newest observed activity. `0` means
    * "not known", which keeps a Session visible instead of silently dropping
@@ -115,14 +169,38 @@ export interface SessionSignal {
   readonly lastActivityAt: number
 }
 
+/** Subagent children counted against their top-level Session. */
+export interface SubagentStats {
+  readonly total: number
+  readonly running: number
+}
+
+/** Cleaned, bounded context a row may show. */
+export interface ContextPreview {
+  /** Single line, at most 80 characters. */
+  readonly snippet?: string | undefined
+  readonly activeTool?: string | undefined
+  readonly tokenCount?: number | undefined
+}
+
 /** One rendered row. */
 export interface BoardEntry {
   readonly id: string
   readonly title: string
   readonly workspacePath?: string | undefined
+  readonly workspaceId?: string | undefined
+  readonly workspaceName?: string | undefined
   readonly lastActivityAt: number
+  /** The Session's Agent is working (used to count automated rows as running). */
+  readonly running?: boolean | undefined
   /** Answerable question calls, when the Session currently has one. */
   readonly questions?: readonly ActiveQuestion[] | undefined
+  /** How long the decision has been blocking (decision rows only). */
+  readonly waitingMs?: number | undefined
+  /** Severity bucket of {@link waitingMs} (decision rows only). */
+  readonly severity?: DecisionSeverity | undefined
+  readonly subagentStats?: SubagentStats | undefined
+  readonly contextPreview?: ContextPreview | undefined
 }
 
 /** One board: its rows plus how many rows the cap hid. */
@@ -141,11 +219,11 @@ export interface BoardSnapshot {
   readonly windowHours: number
   /** Always contains all three boards, in {@link BUCKET_IDS} order. */
   readonly buckets: readonly BoardBucket[]
-  /** Per-board row counts (after the cap). */
-  readonly counts: Readonly<Record<BucketId, number>>
+  /** Per-board row counts (after the cap). `automated` exists only when that board does. */
+  readonly counts: Readonly<Record<CoreBucketId, number>> & { readonly automated?: number }
 }
 
-/** Collapse state of the three boards. `true` means "collapsed". */
+/** Collapse state of the boards. `true` means "collapsed". */
 export type CollapseState = Readonly<Record<BucketId, boolean>>
 
 /** Which boards start collapsed. */
@@ -161,6 +239,16 @@ export interface ResolvedStatusBoardConfig {
   readonly defaultCollapsed: CollapseMode
   /** Whether empty boards still render their header. */
   readonly showEmptyBuckets: boolean
+  /** Show the badge on the collapsed sidebar's expand button. */
+  readonly showCollapsedBadge: boolean
+  /** Decision blocking time (minutes) at which the row turns to a warning. */
+  readonly decisionWarnMinutes: number
+  /** Decision blocking time (minutes) at which the row turns critical. Never below the warn threshold. */
+  readonly decisionCriticalMinutes: number
+  /** Give scheduled / automated sessions their own board. */
+  readonly separateAutomatedSessions: boolean
+  /** Row density of the floating board. */
+  readonly panelDensity: PanelDensity
 }
 
 /** Raw configuration as it arrives from `cordis.patch.yml`. */
@@ -169,4 +257,9 @@ export interface StatusBoardConfig {
   readonly maxRecent?: number | undefined
   readonly defaultCollapsed?: CollapseMode | undefined
   readonly showEmptyBuckets?: boolean | undefined
+  readonly showCollapsedBadge?: boolean | undefined
+  readonly decisionWarnMinutes?: number | undefined
+  readonly decisionCriticalMinutes?: number | undefined
+  readonly separateAutomatedSessions?: boolean | undefined
+  readonly panelDensity?: PanelDensity | undefined
 }

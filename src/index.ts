@@ -44,6 +44,7 @@ export const Config = Schema.object({
   defaultCollapsed: Schema.union([
     Schema.const('decision'),
     Schema.const('executing'),
+    Schema.const('automated'),
     Schema.const('recent'),
     Schema.const('none'),
     Schema.const('all'),
@@ -53,6 +54,27 @@ export const Config = Schema.object({
   showEmptyBuckets: Schema.boolean()
     .default(CONFIG_DEFAULTS.showEmptyBuckets)
     .description('Whether an empty board still renders its header.'),
+  showCollapsedBadge: Schema.boolean()
+    .default(CONFIG_DEFAULTS.showCollapsedBadge)
+    .description('Show a count badge on the sidebar expand button while the sidebar is collapsed.'),
+  decisionWarnMinutes: Schema.number()
+    .min(CONFIG_LIMITS.decisionWarnMinutes.min)
+    .max(CONFIG_LIMITS.decisionWarnMinutes.max)
+    .step(1)
+    .default(CONFIG_DEFAULTS.decisionWarnMinutes)
+    .description('Minutes a decision may wait before its row shows a warning badge.'),
+  decisionCriticalMinutes: Schema.number()
+    .min(CONFIG_LIMITS.decisionCriticalMinutes.min)
+    .max(CONFIG_LIMITS.decisionCriticalMinutes.max)
+    .step(1)
+    .default(CONFIG_DEFAULTS.decisionCriticalMinutes)
+    .description('Minutes a decision may wait before its row turns critical (never below the warning threshold).'),
+  separateAutomatedSessions: Schema.boolean()
+    .default(CONFIG_DEFAULTS.separateAutomatedSessions)
+    .description('Give scheduled and automated sessions their own board.'),
+  panelDensity: Schema.union([Schema.const('comfortable'), Schema.const('compact')])
+    .default(CONFIG_DEFAULTS.panelDensity)
+    .description('Row density of the floating board; compact hides the second line.'),
 })
 
 // ── Structural faces of the Host services this plugin touches ────────────────
@@ -202,7 +224,9 @@ export function apply(ctx: StatusBoardHostContext, rawConfig?: StatusBoardConfig
   // config, not the resolved one).
   ctx.logger?.debug?.(
     `status-board: window=${config.recentWindowHours}h cap=${config.maxRecent} ` +
-      `collapsed=${config.defaultCollapsed} empty=${String(config.showEmptyBuckets)}`,
+      `collapsed=${config.defaultCollapsed} empty=${String(config.showEmptyBuckets)} ` +
+      `badge=${String(config.showCollapsedBadge)} sla=${config.decisionWarnMinutes}/${config.decisionCriticalMinutes}m ` +
+      `automated=${String(config.separateAutomatedSessions)} density=${config.panelDensity}`,
   )
 }
 

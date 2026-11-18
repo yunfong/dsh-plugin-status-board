@@ -20,7 +20,7 @@
  */
 
 import type { ReactElement } from 'react'
-import type { BucketId } from '../shared/types.ts'
+import type { BucketId, DecisionSeverity } from '../shared/types.ts'
 
 /** Visual weight of one marker. */
 export type StatusMarkVariant = 'folder' | 'row'
@@ -40,6 +40,7 @@ export function StatusMark({
   variant,
   empty = false,
   unopened = false,
+  severity = 'normal',
 }: {
   readonly bucket: BucketId | 'unread'
   readonly variant: StatusMarkVariant
@@ -47,6 +48,8 @@ export function StatusMark({
   readonly empty?: boolean | undefined
   /** Finished running and not opened since. Session rows only. */
   readonly unopened?: boolean | undefined
+  /** How long a decision has been blocking; `critical` swaps the amber for the danger colour. */
+  readonly severity?: DecisionSeverity | undefined
 }): ReactElement {
   return (
     <span
@@ -55,6 +58,7 @@ export function StatusMark({
       data-variant={variant}
       data-empty={empty}
       data-unopened={unopened}
+      data-severity={severity}
       aria-hidden="true"
     />
   )

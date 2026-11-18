@@ -31,6 +31,8 @@ import { BoardGlyph, BoardPanel, Chevron } from './Panel.tsx'
 import { StatusTree } from './Tree.tsx'
 import { StatusMark } from './StatusMark.tsx'
 import type { AnswerQuestion } from './QuestionCard.tsx'
+import type { TriageActions } from './Panel.tsx'
+import { summarizeBoard } from './counts.ts'
 import { PANEL_CSS } from './styles.ts'
 import {
   FAB_EDGE_MARGIN,
@@ -49,7 +51,6 @@ import {
 import { DRAG_THRESHOLD, KEYBOARD_STEP, useFabDrag } from './fab-drag.ts'
 import {
   UnreadStatusContext,
-  countCompletionUnread,
   useSessionStatusMap,
   type UseSessionStatus,
 } from './completion-unread.ts'
@@ -404,6 +405,7 @@ export function BoardOverlay({
   store,
   resolveNavigation,
   answerQuestion,
+  resolveTriage,
   positionStorage,
   useSessionStatus,
 }: {
@@ -411,6 +413,8 @@ export function BoardOverlay({
   readonly store: BoardStore
   readonly resolveNavigation: () => ((sessionId: string) => void) | undefined
   readonly answerQuestion?: AnswerQuestion | undefined
+  /** Host write calls for the batch controls, resolved per render. */
+  readonly resolveTriage?: (() => TriageActions) | undefined
   /** Where the remembered position lives; `undefined` keeps it in memory only. */
   readonly positionStorage?: FabPositionStorage | undefined
   /** The platform's `useSessionStatus` slot hook, when the shell provides it. */
@@ -424,12 +428,13 @@ export function BoardOverlay({
   const fabRef = useRef<HTMLButtonElement | null>(null)
   const wasOpen = useRef(false)
   const panelId = `status-board-overlay-${useId()}`
-  const counts = countBoards(state)
-  const recentBoard = state.board.buckets.find(b => b.id === 'recent')
-  const unreadCount = countCompletionUnread(statusMap, recentBoard?.entries ?? [])
-  const recentCount = Math.max(0, counts.recent - unreadCount)
-  const total = counts.decision + unreadCount + counts.executing + recentCount
-  const urgentCount = counts.decision + unreadCount
+  // The global board, never the filtered one: the button is the sentinel.
+  const summary = summarizeBoard(state.board, statusMap)
+  const counts = { decision: summary.decision, executing: summary.executing }
+  const unreadCount = summary.unread
+  const recentCount = summary.recent
+  const total = summary.total
+  const urgentCount = summary.urgent
   const centerText = urgentCount > 0 ? urgentCount : (total > 0 ? total : 0)
 
   const donutArcs = computeDonutArcs({
@@ -602,7 +607,9 @@ export function BoardOverlay({
   useEffect(() => {
     if (!open) return undefined
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') controller.close()
+      // The panel claims the first Escape while its search box has text (it clears
+      // the search and keeps the board open); only an unclaimed one closes.
+      if (event.key === 'Escape' && !event.defaultPrevented) controller.close()
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)
@@ -891,7 +898,12 @@ export function BoardOverlay({
             </button>
           </div>
           <div className="status-board__overlay-body">
-            <BoardPanel store={store} resolveNavigation={resolveNavigation} answerQuestion={answerQuestion} />
+            <BoardPanel
+              store={store}
+              resolveNavigation={resolveNavigation}
+              answerQuestion={answerQuestion}
+              resolveTriage={resolveTriage}
+            />
           </div>
         </div>
       ) : null}

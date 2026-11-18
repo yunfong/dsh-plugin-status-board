@@ -31,6 +31,11 @@ const DEFAULTS: ResolvedStatusBoardConfig = {
   maxRecent: 20,
   defaultCollapsed: 'recent',
   showEmptyBuckets: true,
+  showCollapsedBadge: true,
+  decisionWarnMinutes: 15,
+  decisionCriticalMinutes: 60,
+  separateAutomatedSessions: false,
+  panelDensity: 'comfortable',
 }
 
 /** A session row with the fields the adapter reads. */
@@ -557,11 +562,11 @@ describe('question card on a decision row', () => {
     expect(toggle?.getAttribute('aria-expanded')).toBe('true')
     const card = container.querySelector('.status-board__qcard')
     expect(card).not.toBeNull()
-    const option = Array.from(container.querySelectorAll<HTMLButtonElement>('.status-board__q-option')).find(button =>
-      button.textContent?.includes('Approve'),
+    const option = Array.from(container.querySelectorAll<HTMLInputElement>('.status-board__q-option-input')).find(
+      input => input.value === 'Approve',
     )
     act(() => {
-      option?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      option?.click()
     })
     await act(async () => {
       container.querySelector<HTMLButtonElement>('.status-board__q-submit')?.dispatchEvent(
@@ -604,7 +609,7 @@ describe('question card on a decision row', () => {
     })
     expect(container.textContent).toContain('still waiting in the session')
     expect(container.querySelector('.status-board__q-submit')).toBeNull()
-    expect(container.querySelector<HTMLButtonElement>('.status-board__q-option')?.disabled).toBe(true)
+    expect(container.querySelector<HTMLInputElement>('.status-board__q-option-input')?.disabled).toBe(true)
     act(() => root.unmount())
     container.remove()
   })

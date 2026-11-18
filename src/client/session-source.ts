@@ -31,7 +31,21 @@
  * @module dsh-plugin-status-board/client/session-source
  */
 
-import type { ActiveQuestion, QuestionOption, SessionQuestion, SessionSignal } from '../shared/types.ts'
+import { classifyQuestionCall, clip, summaryPreviewOf } from '../shared/question.ts'
+import type {
+  ActiveQuestion,
+  ContextPreview,
+  QuestionOption,
+  SessionQuestion,
+  SessionSignal,
+  SubagentStats,
+} from '../shared/types.ts'
+
+/** Longest single-line snippet a row may carry. */
+export const SNIPPET_MAX = 80
+
+/** `origin` values that mark a session started by automation rather than a person. */
+const AUTOMATED_ORIGINS: ReadonlySet<string> = new Set(['cron', 'schedule', 'scheduled', 'webhook', 'automation'])
 
 /**
  * The `userQuestions` projection face.
@@ -70,6 +84,19 @@ export interface SessionSummaryLike {
   readonly running?: boolean | undefined
   /** A session that has never exchanged a message. */
   readonly blank?: boolean | undefined
+  /** Workspace id, when the row carries one (otherwise it is derived from the workspace list). */
+  readonly workspaceId?: string | undefined
+  /** Workspace display name, when the row carries one. */
+  readonly workspaceName?: string | undefined
+  /** Latest assistant text or status line, when the snapshot has one. */
+  readonly lastMessageText?: string | undefined
+  /** Tool the agent is running right now, when the snapshot has one. */
+  readonly activeToolName?: string | undefined
+  /** Cumulative token use, when the snapshot has one. */
+  readonly tokenCount?: number | undefined
+  readonly totalTokens?: number | undefined
+  /** Local ownership counts; `mainView > 0` marks the session on screen. */
+  readonly retainedBy?: Readonly<Record<string, number | undefined>> | undefined
   /** Newest activity timestamp, when the snapshot carries one. */
   readonly lastActivityAt?: number | undefined
   /** Creation/update timestamp used when `lastActivityAt` is absent. */
@@ -93,6 +120,26 @@ export interface SessionListLike {
   /** `'pending'` until the first enumeration settles. */
   readonly phase?: 'pending' | 'ready' | undefined
   readonly projectionsBySession?: Readonly<Record<string, ProjectionLike>> | undefined
+}
+
+/** One workspace row (the slice of `WorkspaceView` this plugin reads). */
+export interface WorkspaceLike {
+  readonly workspaceId?: string | undefined
+  readonly path?: string | undefined
+  readonly title?: string | undefined
+  readonly sessionIds?: readonly string[] | undefined
+}
+
+/** The `workspaces` service snapshot (`ctx.workspaces.list`). */
+export interface WorkspaceListLike {
+  readonly items?: readonly WorkspaceLike[] | undefined
+  readonly archivedSessionIds?: readonly string[] | undefined
+}
+
+/** Extra inputs to {@link collectSessionSignals}. */
+export interface SignalContext {
+  /** Snapshot of `ctx.workspaces.list`, used to attribute sessions to workspaces. */
+  readonly workspaces?: WorkspaceListLike | undefined
 }
 
 /** The `sessions` service face this plugin consumes. */
@@ -153,6 +200,7 @@ function questionOf(value: unknown): SessionQuestion | undefined {
   const header = stringOf(value.header)
   const options = optionsOf(value.options)
   const multiSelect = typeof value.multiSelect === 'boolean' ? value.multiSelect : undefined
+  const intent = intentOf(value.intent)
   return {
     id,
     question,
@@ -160,7 +208,37 @@ function questionOf(value: unknown): SessionQuestion | undefined {
     ...(header === undefined ? {} : { header }),
     ...(options === undefined ? {} : { options }),
     ...(multiSelect === undefined ? {} : { multiSelect }),
+    ...(intent === undefined ? {} : { intent }),
   }
+}
+
+/** Read a `plan-review` intent; any other shape is ignored (generic flow). */
+function intentOf(value: unknown): SessionQuestion['intent'] {
+  if (!isRecord(value) || value.kind !== 'plan-review') return undefined
+  const approve = stringOf(value.approve)
+  return approve === undefined ? undefined : { kind: 'plan-review', approve }
+}
+
+/** Parse a timestamp that may be epoch ms, epoch seconds or an ISO string. */
+function timestampOf(value: unknown): number | undefined {
+  let ms: number | undefined
+  if (typeof value === 'number' && Number.isFinite(value)) ms = value
+  else if (typeof value === 'string' && value.length > 0) {
+    const parsed = Date.parse(value)
+    if (Number.isFinite(parsed)) ms = parsed
+  }
+  if (ms === undefined || ms <= 0) return undefined
+  // Seconds-since-epoch values are below 1e11; nothing real in ms is.
+  return ms < 1e11 ? ms * 1000 : ms
+}
+
+/** Ask time of one active call, from whichever field the snapshot spells it as. */
+function askedAtOf(candidate: Record<string, unknown>): number | undefined {
+  for (const key of ['createdAt', 'askedAt', 'timestamp', 'at']) {
+    const stamp = timestampOf(candidate[key])
+    if (stamp !== undefined) return stamp
+  }
+  return undefined
 }
 
 /**
@@ -183,13 +261,81 @@ export function questionsOf(projection: ProjectionLike | undefined): readonly Ac
     const state = candidate.state === 'open' || candidate.state === 'continued' ? candidate.state : undefined
     if (callId === undefined || state === undefined || !Array.isArray(candidate.questions)) continue
     const questions: SessionQuestion[] = []
+    let dropped = 0
     for (const item of candidate.questions) {
       const question = questionOf(item)
       if (question !== undefined) questions.push(question)
+      else dropped += 1
     }
-    if (questions.length > 0) calls.push({ callId, questions, state })
+    if (questions.length === 0) continue
+    // A call with a question the adapter could not read is not faithfully
+    // representable inline, so it must not look like a one-question card.
+    const kind = dropped > 0 ? 'complex_open' : classifyQuestionCall({ questions })
+    const first = questions[0]
+    const preview = first === undefined ? undefined : summaryPreviewOf(first.detail ?? first.question)
+    const askedAtMs = askedAtOf(candidate)
+    calls.push({
+      callId,
+      questions,
+      state,
+      kind,
+      ...(preview === undefined || preview.length === 0 ? {} : { summaryPreview: preview }),
+      ...(askedAtMs === undefined ? {} : { askedAtMs }),
+    })
   }
   return calls
+}
+
+/** Oldest ask time across a session's active calls (the moment it first blocked). */
+export function askedAtOfCalls(calls: readonly ActiveQuestion[]): number | undefined {
+  let oldest: number | undefined
+  for (const call of calls) {
+    if (call.askedAtMs !== undefined && (oldest === undefined || call.askedAtMs < oldest)) oldest = call.askedAtMs
+  }
+  return oldest
+}
+
+/**
+ * Reduce free text to one safe, plain line.
+ *
+ * Removes fenced and inline code markers, HTML tags and common Markdown
+ * punctuation, collapses whitespace, then hard-cuts to {@link SNIPPET_MAX}. The
+ * result is rendered as a React text node, so this is for layout and memory, not
+ * for escaping.
+ */
+export function sanitizeSnippet(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined
+  // Cut first so a megabyte of log never gets scanned by the regexes below.
+  const head = value.slice(0, SNIPPET_MAX * 8)
+  const plain = head
+    .replace(/```[^\n]*\n?/g, ' ')
+    .replace(/<[^>]*>?/g, ' ')
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[`*_~#>|]+/g, '')
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return plain.length === 0 ? undefined : clip(plain, SNIPPET_MAX)
+}
+
+/** Build the bounded context preview of one summary. */
+function contextPreviewOf(summary: SessionSummaryLike): ContextPreview | undefined {
+  const snippet = sanitizeSnippet(summary.lastMessageText)
+  const activeTool = sanitizeSnippet(summary.activeToolName)
+  const rawTokens = summary.tokenCount ?? summary.totalTokens
+  const tokenCount = typeof rawTokens === 'number' && Number.isFinite(rawTokens) && rawTokens > 0 ? Math.trunc(rawTokens) : undefined
+  if (snippet === undefined && activeTool === undefined && tokenCount === undefined) return undefined
+  return {
+    ...(snippet === undefined ? {} : { snippet }),
+    ...(activeTool === undefined ? {} : { activeTool }),
+    ...(tokenCount === undefined ? {} : { tokenCount }),
+  }
+}
+
+/** Whether a summary was started by automation (`origin: 'subagent'` is never one). */
+export function isAutomatedSummary(summary: SessionSummaryLike): boolean {
+  return typeof summary.origin === 'string' && AUTOMATED_ORIGINS.has(summary.origin)
 }
 
 /** Whether a summary describes a subagent child rather than a top-level session. */
@@ -230,42 +376,143 @@ function projectionOf(summary: SessionSummaryLike, id: string, list: SessionList
   return list?.projectionsBySession?.[id]
 }
 
+/** Workspace attribution for every session id the workspace list names. */
+function workspaceIndex(workspaces: WorkspaceListLike | undefined): {
+  byId: Map<string, WorkspaceLike>
+  byPath: Map<string, WorkspaceLike>
+} {
+  const byId = new Map<string, WorkspaceLike>()
+  const byPath = new Map<string, WorkspaceLike>()
+  for (const item of workspaces?.items ?? []) {
+    if (typeof item !== 'object' || item === null) continue
+    if (typeof item.path === 'string' && item.path.length > 0) byPath.set(item.path, item)
+    for (const id of item.sessionIds ?? []) if (typeof id === 'string') byId.set(id, item)
+  }
+  return { byId, byPath }
+}
+
+/** The workspace a summary belongs to: its own fields first, then the list. */
+function workspaceOf(
+  summary: SessionSummaryLike,
+  index: ReturnType<typeof workspaceIndex>,
+): { id?: string; name?: string } {
+  const listed = (typeof summary.id === 'string' ? index.byId.get(summary.id) : undefined) ??
+    (typeof summary.cwd === 'string' ? index.byPath.get(summary.cwd) : undefined)
+  const id = stringOf(summary.workspaceId) ?? stringOf(listed?.workspaceId)
+  const name = stringOf(summary.workspaceName) ?? stringOf(listed?.title)
+  return { ...(id === undefined ? {} : { id }), ...(name === undefined ? {} : { name }) }
+}
+
+/**
+ * The workspace on screen: the one owning the session shown in the main view.
+ *
+ * The host publishes no "active workspace" field, but it does mark the displayed
+ * session (`retainedBy.mainView`), and every session belongs to a workspace.
+ */
+export function resolveActiveWorkspaceId(
+  list: SessionListLike | undefined,
+  workspaces: WorkspaceListLike | undefined,
+): string | undefined {
+  const byId = list?.byId
+  if (byId === undefined) return undefined
+  const index = workspaceIndex(workspaces)
+  for (const summary of Object.values(byId)) {
+    if (typeof summary !== 'object' || summary === null) continue
+    if ((summary.retainedBy?.mainView ?? 0) <= 0) continue
+    // A subagent open in the main view belongs to its parent's workspace.
+    let cursor: SessionSummaryLike | undefined = summary
+    for (let hops = 0; cursor !== undefined && hops < 8; hops += 1) {
+      const id = workspaceOf(cursor, index).id
+      if (id !== undefined) return id
+      cursor = typeof cursor.parentId === 'string' ? byId[cursor.parentId] : undefined
+    }
+  }
+  return undefined
+}
+
+/** Top-level ancestor id of a child, guarding against cycles and dangling parents. */
+function rootOf(child: SessionSummaryLike, byId: Readonly<Record<string, SessionSummaryLike>>): string | undefined {
+  const seen = new Set<string>()
+  let cursor: SessionSummaryLike | undefined = child
+  while (cursor !== undefined && isSubagentChild(cursor)) {
+    const parent: string | undefined = stringOf(cursor.parentId)
+    if (parent === undefined || seen.has(parent)) return undefined
+    seen.add(parent)
+    const next: SessionSummaryLike | undefined = byId[parent]
+    if (next === undefined) return parent
+    cursor = next
+  }
+  return cursor?.id
+}
+
 /**
  * Turn a session-list snapshot into the classifier's input.
  *
  * Skipped rows, each for a reason the board's question demands:
- * - subagent children — their work is already reflected on the parent, and the
- *   board answers "which of my conversations needs me", not "which fragment is
- *   busy";
+ * - subagent children — they are never listed as rows, but they are COUNTED on
+ *   their top-level ancestor so the row can say "2 subagents running";
  * - blank sessions that never exchanged a message — they have no state to
  *   report, and their default title (the workspace name) reads as a phantom row.
  *
  * @param list - the snapshot (may be `undefined` before the first publication).
+ * @param context - optional workspace snapshot for attribution.
  * @returns one signal per visible top-level session, in snapshot order.
  */
-export function collectSessionSignals(list: SessionListLike | undefined): SessionSignal[] {
+export function collectSessionSignals(list: SessionListLike | undefined, context?: SignalContext): SessionSignal[] {
   const byId = list?.byId
   if (byId === undefined) return []
 
+  // Single pass over children first: counts per top-level ancestor.
+  const stats = new Map<string, { total: number; running: number }>()
+  for (const summary of Object.values(byId)) {
+    if (typeof summary !== 'object' || summary === null) continue
+    if (typeof summary.id !== 'string' || summary.id.length === 0) continue
+    if (!isSubagentChild(summary)) continue
+    const root = rootOf(summary, byId)
+    if (root === undefined) continue
+    const entry = stats.get(root) ?? { total: 0, running: 0 }
+    entry.total += 1
+    if (summary.running === true) entry.running += 1
+    stats.set(root, entry)
+  }
+
+  const index = workspaceIndex(context?.workspaces)
+  // An archived session is out of the user's working set; it must leave the
+  // board when archived (including from this board's own archive action).
+  const archived = new Set<string>(context?.workspaces?.archivedSessionIds ?? [])
   const signals: SessionSignal[] = []
   const seen = new Set<string>()
   for (const summary of Object.values(byId)) {
     if (typeof summary !== 'object' || summary === null) continue
     if (typeof summary.id !== 'string' || summary.id.length === 0) continue
     if (seen.has(summary.id)) continue
+    if (archived.has(summary.id)) continue
     if (isSubagentChild(summary)) continue
     if (summary.blank === true) continue
     seen.add(summary.id)
 
     const projection = projectionOf(summary, summary.id, list)
     const questions = questionsOf(projection)
+    const awaiting = isAwaitingDecision(projection)
+    const workspace = workspaceOf(summary, index)
+    const childStats = stats.get(summary.id)
+    const subagentStats: SubagentStats | undefined =
+      childStats === undefined ? undefined : { total: childStats.total, running: childStats.running }
+    const preview = contextPreviewOf(summary)
+    const askedAtMs = awaiting ? askedAtOfCalls(questions) : undefined
     signals.push({
       id: summary.id,
       title: titleOf(summary, summary.id),
       workspacePath: typeof summary.cwd === 'string' && summary.cwd.length > 0 ? summary.cwd : undefined,
       running: summary.running === true,
-      awaitingDecision: isAwaitingDecision(projection),
+      awaitingDecision: awaiting,
       ...(questions.length === 0 ? {} : { questions }),
+      ...(workspace.id === undefined ? {} : { workspaceId: workspace.id }),
+      ...(workspace.name === undefined ? {} : { workspaceName: workspace.name }),
+      ...(isAutomatedSummary(summary) ? { isAutomatedOrigin: true } : {}),
+      ...(askedAtMs === undefined ? {} : { askedAtMs }),
+      ...(subagentStats === undefined ? {} : { subagentStats }),
+      ...(preview === undefined ? {} : { contextPreview: preview }),
       lastActivityAt: lastActivityOf(summary),
     })
   }

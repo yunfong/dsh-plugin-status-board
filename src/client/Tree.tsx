@@ -54,11 +54,24 @@ function TreeRow({
   const unopened = isCompletionUnread(statuses, entry.id)
   const time = formatRelativeTime(now, entry.lastActivityAt, translate)
   const tooltip = entry.workspacePath === undefined ? entry.title : `${entry.title}\n${entry.workspacePath}`
+  const running = entry.subagentStats?.running ?? 0
+  const severity = bucket === 'decision' ? (entry.severity ?? 'normal') : 'normal'
   const content = [
-    <StatusMark bucket={bucket} variant="row" unopened={unopened} key="dot" />,
+    <StatusMark bucket={bucket} variant="row" unopened={unopened} severity={severity} key="dot" />,
     <span className="status-board-tree__title" key="title">
       {entry.title}
     </span>,
+    // Number only: the tree keeps the native single-line row height.
+    running > 0 ? (
+      <span
+        className="status-board-tree__subagents"
+        key="sub"
+        title={translate('row.subagentsRunning', { running })}
+        aria-label={translate('row.subagentsRunning', { running })}
+      >
+        {running}
+      </span>
+    ) : null,
     <span className="status-board-tree__time" key="time">
       {time}
     </span>,
@@ -111,6 +124,7 @@ function TreeFolder({
 }): ReactElement | null {
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
   const statuses = useUnreadStatuses()
+  // The tree is navigation over everything; the panel's filter never narrows it.
   const board = state.board.buckets.find(candidate => candidate.id === id)
   const entries = entriesOverride ?? board?.entries ?? []
   if (id !== 'unread' && board?.entries === undefined && entriesOverride === undefined) return null
@@ -197,6 +211,7 @@ export function StatusTree({ store, onOpenSession }: TreeProps): ReactElement {
   const statuses = useUnreadStatuses()
 
   const recentBoard = state.board.buckets.find(b => b.id === 'recent')
+  const hasAutomated = state.board.buckets.some(b => b.id === 'automated')
   const unreadEntries = (recentBoard?.entries ?? []).filter(entry => isCompletionUnread(statuses, entry.id))
   const cleanRecentEntries = (recentBoard?.entries ?? []).filter(entry => !isCompletionUnread(statuses, entry.id))
 
@@ -226,6 +241,9 @@ export function StatusTree({ store, onOpenSession }: TreeProps): ReactElement {
         onOpenSession={onOpenSession}
         entriesOverride={unreadEntries}
       />
+      {hasAutomated ? (
+        <TreeFolder id="automated" store={store} translate={translate} now={now} onOpenSession={onOpenSession} />
+      ) : null}
       <TreeFolder
         id="recent"
         store={store}

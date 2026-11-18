@@ -4,6 +4,63 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] — 2026-11-18
+
+Implements FEAT-01 – FEAT-06 of the extension spec (v0.6 – v0.8) in one release.
+
+### Added
+
+- **Collapsed-sidebar badge (FEAT-01).** While the sidebar is collapsed, the expand
+  button carries the same counters as the floating ring: an amber capsule for decisions
+  (`99+` cap), a green one for unread completions only, or a 6px pulsing dot while
+  background work runs. It is `aria-hidden` and `pointer-events: none`, so the expand click
+  is untouched. `sidebar.toggle.badge` is a single-occupant slot; the plugin tries the shared
+  priority, then the shadowing one, and otherwise logs one warning and carries on. It does
+  not shadow the host's occupant on the desktop shell, where that occupant draws the update
+  dot. New setting: `showCollapsedBadge`.
+- **Workspace scope and keyword filter (FEAT-02).** The floating board gets a
+  "All / Current workspace" switch and a search box that match title and workspace name,
+  case-insensitively, with no debounce. A "Filtered" tag shows while anything is narrowed.
+  `/` or `Ctrl/⌘+F` focuses the search; the first `Esc` clears it, the second closes the
+  board. The scope is stored under `dsh-plugin-status-board.filter.v1`; the keyword lives
+  in memory only. The floating ring, the collapsed badge and the sidebar tree stay global.
+  "Current workspace" is greyed out when no workspace is active.
+- **Batch archive and mark-read (FEAT-03).** "Completed unread" and "Recent" headers get an
+  **Archive all** button (and "Completed unread" a **Mark all read** button) when the host
+  exposes `uiWorkspace.archiveSession` (respectively a read-clearing method). Three or more
+  sessions ask for confirmation in an inline bar. Calls run five at a time, a failure
+  does not stop the rest, and failed rows stay with a non-blocking summary. Active boards
+  never get these controls. Without a host API nothing is rendered.
+- **Decision wait escalation (FEAT-04).** A decision row shows `Waiting 25m` past
+  `decisionWarnMinutes` and `Blocked 2h` in the danger colour past `decisionCriticalMinutes`;
+  critical rows sort first, longest blocked first. The ask time comes from the snapshot
+  when it has one, otherwise from the first time the store saw the session waiting. A 30 second
+  ticker runs only while a decision is pending and the tab is visible.
+- **Automated board (FEAT-04).** With `separateAutomatedSessions: true`, sessions whose
+  `origin` is `cron`, `schedule`, `webhook` or `automation` get their own "Automated" board
+  between "Completed unread" and "Recent". An automated session that asks a question still
+  moves to "Needs my decision". Default is off.
+- **Structured question cards (FEAT-05).** The inline card renders `single_select` as a radio
+  group, `multi_select` as a checkbox group (at least one), `confirm` (plan review) as a
+  clipped preview with Approve / Reject-with-note, and anything it cannot represent as
+  `complex_open`: a summary and a button that opens the session. The card is a real form,
+  usable by keyboard alone. Submitting locks it; a new `callId` or question id resets the draft;
+  a failure keeps the draft and offers the session.
+- **Subagent counts and context lines (FEAT-06).** Children are counted on their top-level
+  session (`2 subagents running`) and never listed. The floating board shows a second line
+  with the latest message (flattened to one plain line, at most 80 characters), the running
+  tool and the token count when the snapshot has them. `panelDensity: compact` removes the
+  line. The sidebar tree keeps one line and shows only the running number.
+- New settings: `showCollapsedBadge`, `decisionWarnMinutes`, `decisionCriticalMinutes`,
+  `separateAutomatedSessions`, `panelDensity`; `defaultCollapsed` accepts `automated`.
+
+### Changed
+
+- The collapse record now carries `automated`. Records saved by 0.5.0 without it still load.
+- `decisionCriticalMinutes` is lifted to `decisionWarnMinutes` when set below it.
+- Archived sessions no longer appear on the board (read from `ctx.workspaces`).
+- Package metadata points at the `yunfong/dsh-plugin-status-board` fork.
+
 ## [0.5.0] — 2026-10-28
 
 ### Added

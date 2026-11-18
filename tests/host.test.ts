@@ -92,9 +92,19 @@ describe('createConfigHandler', () => {
 })
 
 describe('Config schema', () => {
-  it('is an object schema exposing the four documented fields', () => {
+  it('is an object schema exposing the nine documented fields', () => {
     const shape = (Config as unknown as { dict: Record<string, unknown> }).dict
-    expect(Object.keys(shape).sort()).toEqual(['defaultCollapsed', 'maxRecent', 'recentWindowHours', 'showEmptyBuckets'])
+    expect(Object.keys(shape).sort()).toEqual([
+      'decisionCriticalMinutes',
+      'decisionWarnMinutes',
+      'defaultCollapsed',
+      'maxRecent',
+      'panelDensity',
+      'recentWindowHours',
+      'separateAutomatedSessions',
+      'showCollapsedBadge',
+      'showEmptyBuckets',
+    ])
   })
 
   it('accepts an empty object so a bare row activates', () => {

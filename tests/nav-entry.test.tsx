@@ -30,10 +30,14 @@ function signal(id: string, extra: Partial<SessionSignal> = {}): SessionSignal {
 /** A store double over a fixed board; folder clicks only need a callable toggle. */
 function makeStore(signals: readonly SessionSignal[]): BoardStore & { toggled: string[] } {
   const toggled: string[] = []
-  const collapse = { decision: false, executing: false, recent: true }
+  const collapse = { decision: false, executing: false, automated: false, recent: true }
+  const board = buildBoard(signals, { ...CONFIG_DEFAULTS, recentWindowHours: 24, maxRecent: 20 }, NOW)
   const state = {
     status: 'ready',
-    board: buildBoard(signals, { ...CONFIG_DEFAULTS, recentWindowHours: 24, maxRecent: 20 }, NOW),
+    board,
+    panelBoard: board,
+    filter: { workspaceScope: 'all', keyword: '' },
+    activeWorkspaceId: undefined,
     config: CONFIG_DEFAULTS,
     collapse,
     locale: 'en',

@@ -25,11 +25,15 @@ function signal(id: string, extra: Partial<SessionSignal> = {}): SessionSignal {
 }
 
 function makeStore(signals: readonly SessionSignal[]): BoardStore {
+  const board = buildBoard(signals, { ...CONFIG_DEFAULTS, recentWindowHours: 24, maxRecent: 20 }, NOW)
   const state: BoardState = {
     status: 'ready',
-    board: buildBoard(signals, { ...CONFIG_DEFAULTS, recentWindowHours: 24, maxRecent: 20 }, NOW),
+    board,
+    panelBoard: board,
+    filter: { workspaceScope: 'all', keyword: '' },
+    activeWorkspaceId: undefined,
     config: CONFIG_DEFAULTS,
-    collapse: { decision: false, executing: false, recent: false },
+    collapse: { decision: false, executing: false, automated: false, recent: false },
     locale: 'en',
   } as unknown as BoardState
   return {

@@ -167,15 +167,15 @@ describe('totalRows', () => {
 
 describe('collapse state', () => {
   it('starts only the recent board collapsed by default', () => {
-    expect(resolveCollapse('recent')).toEqual({ decision: false, executing: false, recent: true })
+    expect(resolveCollapse('recent')).toEqual({ decision: false, executing: false, automated: false, recent: true })
   })
 
   it('starts every board collapsed for "all"', () => {
-    expect(resolveCollapse('all')).toEqual({ decision: true, executing: true, recent: true })
+    expect(resolveCollapse('all')).toEqual({ decision: true, executing: true, automated: true, recent: true })
   })
 
   it('starts no board collapsed for "none"', () => {
-    expect(resolveCollapse('none')).toEqual({ decision: false, executing: false, recent: false })
+    expect(resolveCollapse('none')).toEqual({ decision: false, executing: false, automated: false, recent: false })
   })
 
   it('toggles one board without touching the others', () => {

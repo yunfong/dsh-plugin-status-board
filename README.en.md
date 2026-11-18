@@ -139,14 +139,24 @@ Configuration lives on the plugin row in `cordis.patch.yml`, and can also be edi
         maxRecent: 20
         defaultCollapsed: recent
         showEmptyBuckets: true
+        showCollapsedBadge: true
+        decisionWarnMinutes: 15
+        decisionCriticalMinutes: 60
+        separateAutomatedSessions: false
+        panelDensity: comfortable
 ```
 
 | Option | Type | Default | Range | Description |
 | :--- | :--- | :--- | :--- | :--- |
 | `recentWindowHours` | number | `168` | 1 – 720 | Width of the "Recent records" window, in hours; the default is 7 days. Sessions older than this are excluded from that board. |
 | `maxRecent` | number | `20` | 1 – 200 | Maximum rows on the "Recent records" board. The overflow is reported at the board's foot as “N older sessions are hidden”. |
-| `defaultCollapsed` | string | `recent` | `decision` / `executing` / `recent` / `none` / `all` | Which board(s) start collapsed on first load. Once the user toggles a board, their choice wins. |
+| `defaultCollapsed` | string | `recent` | `decision` / `executing` / `automated` / `recent` / `none` / `all` | Which board(s) start collapsed on first load. Once the user toggles a board, their choice wins. |
 | `showEmptyBuckets` | boolean | `true` | `true` / `false` | Whether an empty board still renders its header. `false` hides empty boards entirely. |
+| `showCollapsedBadge` | boolean | `true` | `true` / `false` | Show the pending-work badge on the expand button while the sidebar is collapsed. |
+| `decisionWarnMinutes` | number | `15` | `1 – 1440` | Minutes a decision may wait before its row shows a "Waiting Nm" warning badge. |
+| `decisionCriticalMinutes` | number | `60` | `5 – 4320` | Minutes before the row turns critical and sorts first; lifted to the warning threshold if lower. |
+| `separateAutomatedSessions` | boolean | `false` | `true` / `false` | Give scheduled / automated sessions their own board; one that asks a question still lands in "Needs my decision". |
+| `panelDensity` | string | `comfortable` | `comfortable` / `compact` | Row density of the floating board; `compact` hides the second line. The sidebar tree is always one line. |
 
 > Out-of-range numbers are **clamped**, wrong types **fall back** to the default. A typo in a hand-edited patch must never blank the whole panel.
 

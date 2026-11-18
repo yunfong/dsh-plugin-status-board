@@ -198,6 +198,8 @@ describe('questionsOf', () => {
       {
         callId: 'call-1',
         state: 'continued',
+        kind: 'single_select',
+        summaryPreview: 'The full plan text.',
         questions: [
           {
             id: 'q1',
@@ -266,7 +268,9 @@ describe('questionsOf', () => {
           },
         },
       }),
-    ).toEqual([{ callId: 'ok', state: 'open', questions: [{ id: 'q', question: 'x' }] }])
+    ).toEqual([
+      { callId: 'ok', state: 'open', kind: 'continued', summaryPreview: 'x', questions: [{ id: 'q', question: 'x' }] },
+    ])
   })
 
   it('prefers the row projection and falls back to the resident projection map', () => {

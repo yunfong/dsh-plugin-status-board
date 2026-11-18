@@ -132,14 +132,24 @@ lib/
         maxRecent: 20
         defaultCollapsed: recent
         showEmptyBuckets: true
+        showCollapsedBadge: true
+        decisionWarnMinutes: 15
+        decisionCriticalMinutes: 60
+        separateAutomatedSessions: false
+        panelDensity: comfortable
 ```
 
 | 配置项 | 类型 | 默认值 | 取值范围 | 说明 |
 | :--- | :--- | :--- | :--- | :--- |
 | `recentWindowHours` | number | `168` | 1 – 720 | 「近期记录」看板的时间窗口（小时），默认 7 天；超出窗口的会话不进入该看板。 |
 | `maxRecent` | number | `20` | 1 – 200 | 「近期记录」看板最多显示的行数；超出部分在看板底部提示「另有 N 个较早会话未显示」。 |
-| `defaultCollapsed` | string | `recent` | `decision` / `executing` / `recent` / `none` / `all` | 初次加载时哪块看板处于折叠状态。用户一旦手动折叠过，以用户选择为准。 |
+| `defaultCollapsed` | string | `recent` | `decision` / `executing` / `automated` / `recent` / `none` / `all` | 初次加载时哪块看板处于折叠状态。用户一旦手动折叠过，以用户选择为准。 |
 | `showEmptyBuckets` | boolean | `true` | `true` / `false` | 空看板是否仍渲染标题栏。设为 `false` 时，没有会话的看板整体隐藏。 |
+| `showCollapsedBadge` | boolean | `true` | `true` / `false` | 侧栏收起时，在展开按钮上显示待处理角标。 |
+| `decisionWarnMinutes` | number | `15` | `1 – 1440` | 决策等待超过该分钟数，行内显示「等待 Nm」预警徽章。 |
+| `decisionCriticalMinutes` | number | `60` | `5 – 4320` | 超过该分钟数转为告警色并置顶；小于预警阈值时自动抬升到预警阈值。 |
+| `separateAutomatedSessions` | boolean | `false` | `true` / `false` | 为定时 / 自动化会话单设「自动任务」看板；它们提问时仍进入「待我决策」。 |
+| `panelDensity` | string | `comfortable` | `comfortable` / `compact` | 浮窗行密度；`compact` 收起第二行摘要。侧栏树始终单行。 |
 
 > 越界值会被**钳制**到合法范围，类型错误会**回退**到默认值，而不是让插件加载失败——手工编辑的配置写错一个数字，不应让整个面板白屏。
 

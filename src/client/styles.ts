@@ -1428,4 +1428,527 @@ button.status-board-tree__row:hover {
     max-height: min(62vh, 520px);
   }
 }
+
+/* ── v0.6 – v0.8 additions ───────────────────────────────────────────────── */
+
+/* Filter toolbar: scope switch above the search box. */
+.status-board__toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+
+.status-board__toolbar .status-board__filter {
+  margin: 0;
+}
+
+.status-board__scope {
+  display: flex;
+  gap: 4px;
+  padding: 2px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+}
+
+.status-board__scope-option {
+  position: relative;
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  min-height: 24px;
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.status-board__scope-option input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.status-board__scope-option:has(input:checked) {
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
+}
+
+.status-board__scope-option:has(input:focus-visible) {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
+.status-board__scope-option[data-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.status-board__filtered {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.status-board__head {
+  justify-content: flex-start;
+}
+
+.status-board__head .status-board__total {
+  margin-inline-start: auto;
+}
+
+button.status-board__empty-clear {
+  display: block;
+  width: 100%;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: transparent;
+  font: inherit;
+  font-size: 11.5px;
+  text-align: center;
+  cursor: pointer;
+}
+
+button.status-board__empty-clear:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+/* Two-line comfortable row. */
+.status-board__row-main {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  gap: 1px;
+}
+
+.status-board__row-line1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.status-board__row-line1 .status-board__row-title {
+  flex: 0 1 auto;
+}
+
+.status-board__row-sub {
+  overflow: hidden;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 10.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.status-board__badge {
+  flex: 0 0 auto;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+.status-board__badge--subagent {
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.status-board__badge--wait[data-severity="warning"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-label) 18%, transparent);
+  color: var(--dsw-alias-state-warn-label);
+}
+
+.status-board__badge--wait[data-severity="critical"] {
+  background: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+}
+
+/* A critical decision swaps the amber marker for the danger colour. */
+.status-board-status[data-bucket="decision"][data-severity="critical"] {
+  --sb-status: var(--dsw-alias-state-error-primary);
+}
+
+.status-board__row[data-severity="critical"] {
+  background: color-mix(in srgb, var(--dsw-alias-state-error-primary) 7%, transparent);
+}
+
+/* Sidebar tree: a bare number, so the row keeps its single-line height. */
+.status-board-tree__subagents {
+  flex: 0 0 auto;
+  min-width: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--dsw-alias-state-business-primary) 14%, transparent);
+  color: var(--dsw-alias-state-business-primary);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 14px;
+  text-align: center;
+}
+
+.status-board-status[data-bucket="automated"] {
+  --sb-status: var(--dsw-alias-label-tertiary);
+}
+
+.status-board-status[data-bucket="automated"][data-variant="folder"]::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 1.5px;
+  background: var(--sb-status);
+}
+
+.status-board-status[data-bucket="automated"][data-variant="folder"]::after {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--sb-status-soft);
+  border-radius: 4px;
+}
+
+.status-board-status[data-bucket="automated"][data-variant="row"]::before {
+  width: 8px;
+  height: 8px;
+  border: 1.5px solid var(--sb-status-soft);
+  border-radius: 2px;
+  background: transparent;
+}
+
+/* Board header row: toggle on the left, triage buttons on the right. */
+.status-board__heading-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-board__heading-row .status-board__heading {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.status-board__triage-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.status-board__triage-button {
+  padding: 3px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-board__triage-button:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+}
+
+.status-board__triage-button:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.status-board__triage-button:focus-visible,
+.status-board__triage-yes:focus-visible,
+.status-board__triage-no:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
+}
+
+.status-board__triage-notices {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 2px 18px;
+}
+
+.status-board__triage-confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 7px;
+  background: var(--dsw-alias-bg-layer-2);
+  font-size: 11px;
+}
+
+.status-board__triage-confirm-text {
+  flex: 1 1 100%;
+}
+
+.status-board__triage-yes,
+.status-board__triage-no {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.status-board__triage-yes {
+  border: 0;
+  background: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  font-weight: 600;
+}
+
+.status-board__triage-no {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+}
+
+.status-board__triage-error {
+  margin: 0;
+  color: var(--dsw-alias-state-error-primary);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+/* Structured question cards. */
+.status-board__q-title {
+  margin: 0 0 4px;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-board__q {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.status-board__q-options {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+/* The native input stays in the tab order and the accessibility tree; the mark
+   beside it is the visible control. */
+.status-board__q-option {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.status-board__q-option:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.status-board__q-option[data-selected="true"] {
+  border-color: var(--dsw-alias-border-l2);
+}
+
+.status-board__q-option-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: inherit;
+}
+
+.status-board__q-option:has(.status-board__q-option-input:focus-visible) {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: -2px;
+}
+
+.status-board__q-option-mark[data-multi="false"] {
+  border-radius: 50%;
+}
+
+.status-board__q-option-mark[data-multi="false"][data-selected="true"]::after {
+  left: 3px;
+  top: 3px;
+  width: 4px;
+  height: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-primary-foreground);
+  transform: none;
+}
+
+.status-board__q-option--other .status-board__q-option-label {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.status-board__q-preview {
+  display: -webkit-box;
+  max-height: calc(1.45em * 6);
+  margin: 4px 0 0;
+  overflow: hidden;
+  color: var(--dsw-alias-label-primary);
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 6;
+}
+
+.status-board__q-preview[data-expanded="true"] {
+  max-height: 14em;
+  overflow-y: auto;
+  -webkit-line-clamp: unset;
+}
+
+.status-board__q-preview:focus-visible {
+  outline: 2px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
+}
+
+.status-board__q-more {
+  margin: 2px 0 0;
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.status-board__q-reject {
+  padding: 6px 10px;
+  border: 1px solid var(--dsw-alias-state-error-primary);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--dsw-alias-state-error-primary);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.status-board__q-reject:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.status-board__q-open--primary {
+  border-color: var(--dsw-alias-state-business-primary);
+  color: var(--dsw-alias-state-business-primary);
+  font-weight: 600;
+}
+
+.status-board__q-failure {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-board__q-retry {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-state-business-primary);
+  font: inherit;
+  font-size: 10.5px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.status-board__q:disabled .status-board__q-option {
+  cursor: default;
+}
+`
+
+/**
+ * Stylesheet of the collapsed-sidebar badge.
+ *
+ * Kept apart from {@link PANEL_CSS} because it is mounted inside the shell's
+ * expand button, where the 40 KB board stylesheet has no business being. The same
+ * rule applies: colour comes from theme tokens only.
+ *
+ * The expand button is `position: relative`, so the badge anchors to its corner.
+ */
+export const BADGE_CSS = String.raw`
+.status-board__toggle-badge {
+  position: absolute;
+  top: -2px;
+  inset-inline-end: -4px;
+  z-index: 1;
+  box-sizing: border-box;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--dsw-alias-state-warn-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  font-size: 9px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 14px;
+  text-align: center;
+  pointer-events: none;
+  box-shadow: 0 0 0 1.5px var(--dsw-alias-bg-layer-1);
+}
+
+.status-board__toggle-badge[data-tone="unread"] {
+  background: var(--dsw-alias-state-success-primary);
+}
+
+.status-board__toggle-dot {
+  position: absolute;
+  top: 2px;
+  inset-inline-end: 2px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dsw-alias-state-business-primary);
+  pointer-events: none;
+  animation: status-board-toggle-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes status-board-toggle-pulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-board__toggle-dot {
+    animation: none;
+  }
+}
 `

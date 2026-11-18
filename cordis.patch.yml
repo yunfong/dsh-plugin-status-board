@@ -18,3 +18,8 @@
         maxRecent: 20
         defaultCollapsed: recent
         showEmptyBuckets: true
+        showCollapsedBadge: true
+        decisionWarnMinutes: 15
+        decisionCriticalMinutes: 60
+        separateAutomatedSessions: false
+        panelDensity: comfortable

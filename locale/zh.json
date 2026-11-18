@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "会话状态看板",
-    "description": "把会话按「待我决策 / 正在执行 / 近期记录」归入三块可折叠看板，一屏掌握所有会话的真实状态。"
+    "description": "把会话按「待我决策 / 正在执行 / 完成未看 / 自动任务 / 近期记录」归入可折叠看板，一屏掌握所有会话的真实状态。"
   },
   "panel": {
     "title": "会话状态看板",
@@ -29,7 +29,11 @@
     "unreadUnit": "个完成未看",
     "unopened": "未看",
     "recentEmpty": "近期没有动静",
-    "recentHintDays": "最近 {days} 天内有动静"
+    "recentHintDays": "最近 {days} 天内有动静",
+    "automated": "自动任务",
+    "automatedHint": "定时与自动化触发的会话；它们若提问，仍会进入「待我决策」",
+    "automatedUnit": "个自动任务",
+    "automatedEmpty": "没有自动任务会话"
   },
   "state": {
     "loading": "正在读取会话…",
@@ -83,6 +87,58 @@
     "openNotice": "这道题仍在会话前台等待，请打开会话回答。",
     "openSession": "打开会话",
     "unavailable": "当前环境没有回答通道，请打开会话回答。",
-    "error": "提交失败：{message}"
+    "error": "提交失败：{message}",
+    "approve": "批准",
+    "reject": "驳回并说明",
+    "rejectNote": "驳回原因",
+    "selectOne": "选择一项，或填写其他回答",
+    "selectAtLeastOne": "请至少选择一项",
+    "other": "其他…",
+    "expand": "展开更多",
+    "collapse": "收起",
+    "openFull": "打开会话处理完整题卡",
+    "complexNotice": "这道题包含多个部分或较长的计划，请在会话中完整回答。",
+    "retryInSession": "跳转原会话重试",
+    "changed": "题目已变更，草稿已清空",
+    "answeredElsewhere": "这道题已在别处回答"
+  },
+  "filter": {
+    "scopeLabel": "工作区范围",
+    "scopeAll": "全部工作区",
+    "scopeCurrent": "当前工作区",
+    "scopeCurrentUnavailable": "当前没有激活的工作区",
+    "search": "搜索标题或工作区",
+    "active": "已过滤",
+    "activeHint": "列表已被过滤；悬浮按钮仍统计全部会话",
+    "clear": "清空过滤条件",
+    "noMatchClear": "无匹配会话，点击清空过滤条件",
+    "hiddenByFilter": "过滤中：当前视图 {count} 个会话"
+  },
+  "row": {
+    "waitingWarn": "等待 {duration}",
+    "waitingCritical": "阻塞 {duration}",
+    "subagentsRunning": "{running} 子代理运行中",
+    "subagentsTotal": "{total} 子代理",
+    "tokens": "{count} tok",
+    "tool": "正在运行 {tool}",
+    "minutes": "{count}m",
+    "hours": "{count}h",
+    "days": "{count}d"
+  },
+  "badge": {
+    "label": "{count} 个会话需要处理",
+    "running": "有会话正在运行"
+  },
+  "triage": {
+    "archiveAll": "批量归档",
+    "archiveAllLabel": "归档「{name}」中的全部会话",
+    "confirm": "确认归档当前栏 {count} 个已完成会话？",
+    "confirmYes": "确认",
+    "confirmNo": "取消",
+    "busy": "归档中 {done}/{total}…",
+    "failed": "{count} 个会话归档失败：{message}",
+    "done": "已归档 {count} 个会话",
+    "markAllRead": "一键标为已读",
+    "markAllReadLabel": "把「{name}」中的会话全部标为已读"
   }
 }

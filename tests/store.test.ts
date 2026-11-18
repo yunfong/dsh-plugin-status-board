@@ -23,7 +23,17 @@ const NOW = 1_700_000_000_000
 
 /** The documented defaults, spelled out so a default change fails loudly. */
 function defaults(): ResolvedStatusBoardConfig {
-  return { recentWindowHours: 168, maxRecent: 20, defaultCollapsed: 'recent', showEmptyBuckets: true }
+  return {
+    recentWindowHours: 168,
+    maxRecent: 20,
+    defaultCollapsed: 'recent',
+    showEmptyBuckets: true,
+    showCollapsedBadge: true,
+    decisionWarnMinutes: 15,
+    decisionCriticalMinutes: 60,
+    separateAutomatedSessions: false,
+    panelDensity: 'comfortable',
+  }
 }
 
 /** A session list whose contents the test can publish later. */
@@ -197,7 +207,7 @@ describe('createBoardStore', () => {
     const { store } = build({ loadConfig: () => Promise.resolve({ ...defaults(), defaultCollapsed: 'all' }) })
     await Promise.resolve()
     await Promise.resolve()
-    expect(store.getSnapshot().collapse).toEqual({ decision: true, executing: true, recent: true })
+    expect(store.getSnapshot().collapse).toEqual({ decision: true, executing: true, automated: true, recent: true })
     store.dispose()
   })
 
@@ -215,15 +225,15 @@ describe('createBoardStore', () => {
 
   it('restores a persisted collapse state on the next page load', () => {
     const storage = memoryStorage()
-    storage.data.set(COLLAPSE_STORAGE_KEY, serializeCollapse({ decision: true, executing: false, recent: true }))
+    storage.data.set(COLLAPSE_STORAGE_KEY, serializeCollapse({ decision: true, executing: false, automated: false, recent: true }))
     const { store } = build({ storage })
-    expect(store.getSnapshot().collapse).toEqual({ decision: true, executing: false, recent: true })
+    expect(store.getSnapshot().collapse).toEqual({ decision: true, executing: false, automated: false, recent: true })
     store.dispose()
   })
 
   it('adopts the Host-published configuration without discarding a stored choice', async () => {
     const storage = memoryStorage()
-    storage.data.set(COLLAPSE_STORAGE_KEY, serializeCollapse({ decision: false, executing: true, recent: false }))
+    storage.data.set(COLLAPSE_STORAGE_KEY, serializeCollapse({ decision: false, executing: true, automated: false, recent: false }))
     const { store } = build({
       storage,
       loadConfig: () => Promise.resolve({ ...defaults(), recentWindowHours: 6, maxRecent: 4, defaultCollapsed: 'all' }),
@@ -235,7 +245,7 @@ describe('createBoardStore', () => {
     expect(state.config.recentWindowHours).toBe(6)
     expect(state.config.maxRecent).toBe(4)
     // The stored choice survives the late configuration publication.
-    expect(state.collapse).toEqual({ decision: false, executing: true, recent: false })
+    expect(state.collapse).toEqual({ decision: false, executing: true, automated: false, recent: false })
     store.dispose()
   })
 
@@ -314,9 +324,10 @@ describe('createBoardStore', () => {
 
 describe('parseCollapse', () => {
   it('round-trips a serialized state', () => {
-    expect(parseCollapse(serializeCollapse({ decision: true, executing: false, recent: true }))).toEqual({
+    expect(parseCollapse(serializeCollapse({ decision: true, executing: false, automated: false, recent: true }))).toEqual({
       decision: true,
       executing: false,
+      automated: false,
       recent: true,
     })
   })

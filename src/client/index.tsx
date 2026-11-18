@@ -33,10 +33,18 @@
 import { createElement, type ReactElement } from 'react'
 import { LOCALE_NAMESPACE, createTranslate } from '../shared/i18n.ts'
 import { createOverlayController, BoardNavEntry, BoardOverlay } from './overlay.tsx'
+import { registerCollapsedBadge } from './collapsed-badge.tsx'
+import type { TriageActions } from './Panel.tsx'
 import type { UseSessionStatus } from './completion-unread.ts'
 import type { AnswerQuestion } from './QuestionCard.tsx'
 import type { AnswerBatch } from '../shared/types.ts'
-import { createBoardStore, loadPublishedConfig, type BoardStore, type CollapseStorage } from './store.ts'
+import {
+  createBoardStore,
+  loadPublishedConfig,
+  type BoardStore,
+  type CollapseStorage,
+  type WorkspacesFace,
+} from './store.ts'
 import type { SessionListLike } from './session-source.ts'
 import enFile from '../../locale/en.json'
 import zhFile from '../../locale/zh.json'
@@ -73,6 +81,24 @@ export interface SessionsService {
  */
 export interface WorkspaceNavigationService {
   openSession(sessionId: string): void
+  /**
+   * Archive one session (the same call the sidebar's own archive action makes).
+   * Optional: older hosts do not expose it, which hides the batch-archive button.
+   */
+  archiveSession?(sessionId: string, options?: { readonly stopActivity?: boolean }): Promise<void>
+}
+
+/**
+ * The write calls the host may offer to clear a completion reminder.
+ *
+ * None is known to exist in the shipped Harness (the unread flag clears when a
+ * session is opened), so the probe is deliberately generic and the button stays
+ * hidden unless a composition provides one. The board never fakes a read state.
+ */
+export interface SessionStatusWriteService {
+  markRead?(sessionId: string): void | Promise<void>
+  clearUnread?(sessionId: string): void | Promise<void>
+  clearCompletionUnread?(sessionId: string): void | Promise<void>
 }
 
 /** The Cordis client context slice this module uses. */
@@ -84,12 +110,17 @@ export interface ClientContext {
   readonly sessions: SessionsService
   readonly locale: LocaleService
   get(name: string): unknown
+  /** Run `callback` once the named optional services exist. */
   effect(callback: () => unknown, label?: string): unknown
   /**
    * Wait for optional services on a child context. Used for the answer Remote:
    * the board must keep working when a composition disables user-questions.
    */
-  inject(keys: readonly string[], callback: (ctx: { get(name: string): unknown }) => void, label?: string): unknown
+  inject(
+    keys: readonly string[],
+    callback: (ctx: { get(name: string): unknown; effect(callback: () => unknown, label?: string): unknown }) => void,
+    label?: string,
+  ): unknown
 }
 
 /**
@@ -162,6 +193,19 @@ export function apply(ctx: ClientContext): void {
     loadConfig: () => loadPublishedConfig(globalThis.fetch),
   })
   ctx.effect(() => () => store.dispose(), 'status-board: store')
+
+  // `workspaces` is optional: without it sessions simply carry no workspace and
+  // the "current workspace" scope stays unavailable. Waiting on a child context
+  // keeps the board alive on a composition that lacks the service.
+  ctx.inject(
+    ['workspaces'],
+    workspaceCtx => {
+      const face = workspaceCtx.get('workspaces') as WorkspacesFace | undefined
+      if (face === undefined || face.list === undefined) return
+      workspaceCtx.effect(() => store.attachWorkspaces(face), 'status-board: workspaces')
+    },
+    'status-board: workspace service',
+  )
 
   // ── Navigation ────────────────────────────────────────────────────────────
   // Resolved per render (not captured here): `uiWorkspace` may mount after this
@@ -240,12 +284,42 @@ export function apply(ctx: ClientContext): void {
     }
   }
 
+  /**
+   * Host write capabilities, probed per render. A missing method yields
+   * `undefined`, and the matching button is not rendered at all.
+   */
+  const resolveTriage = (): TriageActions => {
+    const navigation = ctx.get('uiWorkspace') as WorkspaceNavigationService | undefined
+    const archiveSession = navigation?.archiveSession
+    const statusWrite = ctx.get('uiSession') as SessionStatusWriteService | undefined
+    const markRead = statusWrite?.markRead ?? statusWrite?.clearUnread ?? statusWrite?.clearCompletionUnread
+    return {
+      ...(typeof archiveSession === 'function'
+        ? {
+            // `stopActivity` is never passed: a session with running work must
+            // refuse (it is reported as a failure), not be killed from a bulk action.
+            archive: async (sessionId: string): Promise<void> => {
+              await archiveSession.call(navigation, sessionId)
+            },
+          }
+        : {}),
+      ...(typeof markRead === 'function'
+        ? {
+            markRead: async (sessionId: string): Promise<void> => {
+              await markRead.call(statusWrite, sessionId)
+            },
+          }
+        : {}),
+    }
+  }
+
   const Overlay = ({ useSessionStatus }: SlotStandardProps): ReactElement | null =>
     createElement(BoardOverlay, {
       controller: boardController,
       store,
       resolveNavigation,
       answerQuestion: resolveAnswer(),
+      resolveTriage,
       ...(useSessionStatus === undefined ? {} : { useSessionStatus }),
       // The entry's position is a device preference, so it persists beside the
       // collapse state rather than in the plugin config (see docs/adr/0001).
@@ -259,4 +333,8 @@ export function apply(ctx: ClientContext): void {
   ctx.slots.inject('shell.overlay', () =>
     ctx.slots.register({ name: 'shell.overlay', id: 'status-board', order: 20 }, Overlay),
   )
+
+  // The collapsed-sidebar badge is a `single` slot another plugin may hold. A
+  // refusal must not break the other two entries, so the registrar swallows it.
+  ctx.slots.inject('sidebar.toggle.badge', () => registerCollapsedBadge(ctx.slots, store))
 }
